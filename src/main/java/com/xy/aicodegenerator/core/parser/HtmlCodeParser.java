@@ -27,18 +27,4 @@ public class HtmlCodeParser implements CodeParser<HtmlCodeResult> {
         }
         return result;
     }
-
-    /**
-     * 提取HTML代码内容
-     *
-     * @param content 原始内容
-     * @return HTML代码
-     */
-    private String extractHtmlCode(String content) {
-        Matcher matcher = HTML_CODE_PATTERN.matcher(content);
-        if (matcher.find()) {
-            return matcher.group(1);
-        }
-        return null;
-    }
 }
