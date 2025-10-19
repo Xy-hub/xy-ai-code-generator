@@ -1,6 +1,5 @@
 # 数据库初始化
-# @author <a href="https://github.com/liyupi">程序员鱼皮</a>
-# @from <a href="https://codefather.cn">编程导航学习圈</a>
+# @author <a href="https://github.com/Xy-hub">xy</a>
 
 -- 创建库
 create database if not exists xytrest;
