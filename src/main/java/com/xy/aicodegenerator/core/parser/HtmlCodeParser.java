@@ -12,8 +12,6 @@ import java.util.regex.Pattern;
  */
 public class HtmlCodeParser implements CodeParser<HtmlCodeResult> {
 
-    private static final Pattern HTML_CODE_PATTERN = Pattern.compile("```html\\s*\\n([\\s\\S]*?)```", Pattern.CASE_INSENSITIVE);
-
     @Override
     public HtmlCodeResult parseCode(String codeContent) {
         HtmlCodeResult result = new HtmlCodeResult();
