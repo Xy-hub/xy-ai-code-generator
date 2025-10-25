@@ -23,3 +23,7 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+# 配置日志级别以打印MyBatis-Flex的SQL语句
+logging:
+  level:
+    com.xy.aicodegenerator.mapper: debug

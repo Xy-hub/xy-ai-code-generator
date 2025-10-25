@@ -1,9 +1,13 @@
 package com.xy.aicodegenerator.ai;
 
 
+import cn.hutool.json.JSONObject;
+import com.xy.aicodegenerator.ai.model.AppNameResult;
 import com.xy.aicodegenerator.ai.model.HtmlCodeResult;
 import com.xy.aicodegenerator.ai.model.MultiFileCodeResult;
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 import reactor.core.publisher.Flux;
 
 public interface AiCodeGeneratorService {
@@ -43,5 +47,14 @@ public interface AiCodeGeneratorService {
      */
     @SystemMessage(fromResource = "prompt/codegen-multi-file-system-prompt.txt")
     Flux<String> generateMultiFileCodeStream(String userMessage);
+
+    /**
+     * 生成应用名称
+     * 因为配置了AI必须返回JSON格式，所以需要一个类进行接收，不能直接使用String接收返回值
+     * @param userMessage
+     * @return
+     */
+    @UserMessage(value = "{{message}}")
+    AppNameResult createAppName(@V("message") String userMessage);
 
 }

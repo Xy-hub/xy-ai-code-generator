@@ -19,6 +19,7 @@ public interface AppService extends IService<App> {
 
     Flux<String> chatToGenCode(Long appId, String message, User loginUser);
 
+    AppVO getAppVOWithUserVO(App app);
     AppVO getAppVO(App app);
 
     QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest);

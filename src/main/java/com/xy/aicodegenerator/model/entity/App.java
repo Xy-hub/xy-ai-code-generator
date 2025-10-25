@@ -77,6 +77,13 @@ public class App implements Serializable {
     private Integer priority;
 
     /**
+     * 是否公开，决定他人是否能看见该应用
+     * 默认非公开-0
+     */
+    @Column("isPublic")
+    private Integer isPublic;
+
+    /**
      * 创建用户id
      */
     @Column("userId")

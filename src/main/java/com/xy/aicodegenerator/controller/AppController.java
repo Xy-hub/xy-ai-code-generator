@@ -1,16 +1,21 @@
 package com.xy.aicodegenerator.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.mybatisflex.core.paginate.Page;
 import com.mybatisflex.core.query.QueryWrapper;
+import com.xy.aicodegenerator.ai.AiCodeGeneratorService;
+import com.xy.aicodegenerator.ai.model.AppNameResult;
 import com.xy.aicodegenerator.annotation.AuthCheck;
 import com.xy.aicodegenerator.common.BaseResponse;
 import com.xy.aicodegenerator.common.DeleteRequest;
 import com.xy.aicodegenerator.common.ResultUtils;
 import com.xy.aicodegenerator.constant.AppConstant;
 import com.xy.aicodegenerator.constant.UserConstant;
+import com.xy.aicodegenerator.core.AiCodeGeneratorFacade;
 import com.xy.aicodegenerator.exception.BusinessException;
 import com.xy.aicodegenerator.exception.ErrorCode;
 import com.xy.aicodegenerator.exception.ThrowUtils;
@@ -19,6 +24,7 @@ import com.xy.aicodegenerator.model.entity.App;
 import com.xy.aicodegenerator.model.entity.User;
 import com.xy.aicodegenerator.model.enums.CodeGenTypeEnum;
 import com.xy.aicodegenerator.model.vo.AppVO;
+import com.xy.aicodegenerator.prompt.CommonPrompt;
 import com.xy.aicodegenerator.service.AppService;
 import com.xy.aicodegenerator.service.UserService;
 import jakarta.annotation.Resource;
@@ -32,7 +38,6 @@ import reactor.core.publisher.Mono;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 
 /**
@@ -49,6 +54,9 @@ public class AppController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private AiCodeGeneratorService aiCodeGeneratorService;
 
     /**
      * 创建应用
@@ -69,10 +77,11 @@ public class AppController {
         App app = new App();
         BeanUtil.copyProperties(appAddRequest, app);
         app.setUserId(loginUser.getId());
-        // 应用名称暂时为 initPrompt 前 12 位
-        app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
+        //调用AI自动生成应用名称
+        AppNameResult appName = aiCodeGeneratorService.createAppName(CommonPrompt.CREATE_APP_NAME_PROMPT + initPrompt);
+        app.setAppName(appName.getAppName());
         // 暂时设置为多文件生成
-        app.setCodeGenType(CodeGenTypeEnum.MULTI_FILE.getValue());
+        app.setCodeGenType(CodeGenTypeEnum.HTML.getValue());
         // 插入数据库
         boolean result = appService.save(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -104,6 +113,7 @@ public class AppController {
         App app = new App();
         app.setId(id);
         app.setAppName(appUpdateRequest.getAppName());
+        app.setIsPublic(appUpdateRequest.getIsPublic());
         // 设置编辑时间
         app.setEditTime(LocalDateTime.now());
         boolean result = appService.updateById(app);
@@ -151,7 +161,7 @@ public class AppController {
         App app = appService.getById(id);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
         // 获取封装类（包含用户信息）
-        return ResultUtils.success(appService.getAppVO(app));
+        return ResultUtils.success(appService.getAppVOWithUserVO(app));
     }
 
 
@@ -191,6 +201,8 @@ public class AppController {
         long pageNum = appQueryRequest.getPageNum();
         // 只查询精选的应用
         appQueryRequest.setPriority(AppConstant.GOOD_APP_PRIORITY);
+        // 只查询公开的应用
+        appQueryRequest.setIsPublic(BooleanUtil.toInt(true));
         return getAppVOPage(pageNum, pageSize, appQueryRequest);
     }
 
@@ -308,7 +320,7 @@ public class AppController {
         App app = appService.getById(id);
         ThrowUtils.throwIf(app == null, ErrorCode.NOT_FOUND_ERROR);
         // 获取封装类
-        return ResultUtils.success(appService.getAppVO(app));
+        return ResultUtils.success(appService.getAppVOWithUserVO(app));
     }
     
     /**

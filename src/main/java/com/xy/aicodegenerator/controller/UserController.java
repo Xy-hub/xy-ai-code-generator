@@ -12,6 +12,7 @@ import com.xy.aicodegenerator.exception.BusinessException;
 import com.xy.aicodegenerator.exception.ErrorCode;
 import com.xy.aicodegenerator.exception.ThrowUtils;
 import com.xy.aicodegenerator.model.dto.user.*;
+import com.xy.aicodegenerator.model.enums.UserRoleEnum;
 import com.xy.aicodegenerator.model.vo.LoginUserVO;
 import com.xy.aicodegenerator.model.vo.UserVO;
 import jakarta.annotation.Resource;
@@ -162,10 +163,18 @@ public class UserController {
      * 更新用户
      */
     @PostMapping("/update")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> updateUser(@RequestBody @Valid UserUpdateRequest userUpdateRequest) {
+    public BaseResponse<Boolean> updateUser(@RequestBody @Valid UserUpdateRequest userUpdateRequest, HttpServletRequest httpServletRequest) {
         if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        //非管理员只能修改自己的个人信息，管理员可以修改所有用户的个人信息
+        User loginUser = userService.getLoginUser(httpServletRequest);
+        UserRoleEnum userRoleEnum = UserRoleEnum.getEnumByValue(loginUser.getUserRole());
+        if (userRoleEnum == null) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        if (!UserRoleEnum.ADMIN.equals(userRoleEnum) && !userUpdateRequest.getId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         User user = new User();
         BeanUtil.copyProperties(userUpdateRequest, user);
