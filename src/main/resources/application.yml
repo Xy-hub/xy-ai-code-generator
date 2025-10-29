@@ -1,6 +1,9 @@
 spring:
   profiles:
     active: local
+  session:
+    store-type: redis
+    timeout: 2592000
   # mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -13,6 +16,9 @@ server:
   port: 8001
   servlet:
     context-path: /api
+    session:
+      cookie:
+        max-age: 2592000
 # springdoc-openapi
 springdoc:
   group-configs:
