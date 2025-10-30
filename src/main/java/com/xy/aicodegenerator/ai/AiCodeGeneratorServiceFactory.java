@@ -2,8 +2,15 @@ package com.xy.aicodegenerator.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.xy.aicodegenerator.ai.tools.FileWriteTool;
+import com.xy.aicodegenerator.exception.BusinessException;
+import com.xy.aicodegenerator.exception.ErrorCode;
+import com.xy.aicodegenerator.model.enums.CodeGenTypeEnum;
 import com.xy.aicodegenerator.service.ChatHistoryService;
 import dev.langchain4j.community.store.memory.chat.redis.RedisChatMemoryStore;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -24,7 +31,10 @@ public class AiCodeGeneratorServiceFactory {
     private ChatModel chatModel;
 
     @Resource
-    private StreamingChatModel streamingChatModel;
+    private StreamingChatModel openAiStreamingChatModel;
+
+    @Resource
+    private StreamingChatModel reasoningStreamingChatModel;
 
     @Resource
     private RedisChatMemoryStore redisChatMemoryStore;
@@ -47,7 +57,7 @@ public class AiCodeGeneratorServiceFactory {
      * - 写入后 30 分钟过期
      * - 访问后 10 分钟过期
      */
-    private final Cache<Long, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder()
+    private final Cache<String, AiCodeGeneratorService> serviceCache = Caffeine.newBuilder()
             .maximumSize(1000)
             .expireAfterWrite(Duration.ofMinutes(30))
             .expireAfterAccess(Duration.ofMinutes(10))
@@ -57,19 +67,29 @@ public class AiCodeGeneratorServiceFactory {
             .build();
 
     /**
-     * 根据 appId 获取服务（带缓存）
+     * 根据 appId 获取服务（带缓存） 兼容旧业务逻辑
      */
     public AiCodeGeneratorService getAiCodeGeneratorService(long appId) {
-        return serviceCache.get(appId, this::createAiCodeGeneratorService);
+        return getAiCodeGeneratorService(appId, CodeGenTypeEnum.HTML);
+    }
+
+    /**
+     * 根据 appId 获取服务（带缓存）
+     */
+    public AiCodeGeneratorService getAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType) {
+        String cacheKey = buildCacheKey(appId, codeGenType);
+        return serviceCache.get(cacheKey, key -> createAiCodeGeneratorService(appId, codeGenType));
+
     }
 
     /**
      * 创建新的 AI 服务实例
      */
-    private AiCodeGeneratorService createAiCodeGeneratorService(long appId) {
+    private AiCodeGeneratorService createAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType) {
         log.info("为 appId: {} 创建新的 AI 服务实例", appId);
         // 根据 appId 构建独立的对话记忆
-        int maxMessages = 10;
+        int maxMessages = 20;
+
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory
                 .builder()
                 .id(appId)
@@ -80,10 +100,24 @@ public class AiCodeGeneratorServiceFactory {
         if (appId != 0 ) {
             chatHistoryService.loadChatHistoryToMemory(appId, chatMemory, maxMessages);
         }
-        return AiServices.builder(AiCodeGeneratorService.class)
-                .chatModel(chatModel)
-                .streamingChatModel(streamingChatModel)
-                .chatMemory(chatMemory)
-                .build();
+        return switch (codeGenType) {
+            case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
+                    .streamingChatModel(reasoningStreamingChatModel)
+                    .chatMemoryProvider(o -> chatMemory)
+                    .tools(new FileWriteTool())
+                    .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage
+                            .from(toolExecutionRequest,"Error, there is no tool called " + toolExecutionRequest.name()))
+                    .build();
+            case HTML,MULTI_FILE -> AiServices.builder(AiCodeGeneratorService.class)
+                    .chatModel(chatModel)
+                    .streamingChatModel(openAiStreamingChatModel)
+                    .chatMemory(chatMemory)
+                    .build();
+            default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型" + codeGenType.getValue());
+        };
+    }
+
+    private String buildCacheKey(long appId, CodeGenTypeEnum codeGenType) {
+        return appId + "_" + codeGenType;
     }
 }
