@@ -4,6 +4,7 @@ import com.xy.aicodegenerator.constant.AppConstant;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;

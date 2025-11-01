@@ -88,7 +88,7 @@ public class AiCodeGeneratorServiceFactory {
     private AiCodeGeneratorService createAiCodeGeneratorService(long appId, CodeGenTypeEnum codeGenType) {
         log.info("为 appId: {} 创建新的 AI 服务实例", appId);
         // 根据 appId 构建独立的对话记忆
-        int maxMessages = 20;
+        int maxMessages = 30;
 
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory
                 .builder()

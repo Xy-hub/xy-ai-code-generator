@@ -9,6 +9,7 @@ import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
 import com.xy.aicodegenerator.constant.AppConstant;
 import com.xy.aicodegenerator.core.AiCodeGeneratorFacade;
+import com.xy.aicodegenerator.core.handler.StreamHandlerExecutor;
 import com.xy.aicodegenerator.exception.BusinessException;
 import com.xy.aicodegenerator.exception.ErrorCode;
 import com.xy.aicodegenerator.exception.ThrowUtils;
@@ -57,6 +58,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
     @Resource
     private AiCodeGeneratorFacade aiCodeGeneratorFacade;
 
+    @Resource
+    private StreamHandlerExecutor streamHandlerExecutor;
+
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
         // 1. 参数校验
@@ -75,27 +79,14 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         if (codeGenTypeEnum == null) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型");
         }
-        //5. 通过校验后，添加用户消息到对话历史
+        // 5. 通过校验后，添加用户消息到对话历史
         chatHistoryService.addChatMessage(appId,message, MessageTypeEnum.USER.getValue(), loginUser.getId());
 
-        // 5. 调用 AI 生成代码
+        // 6. 调用 AI 生成代码
         Flux<String> contentFlux = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+
         // 7.收集AI相应内容，并记录到对话历史
-        StringBuilder stringBuilder = new StringBuilder();
-        return contentFlux.map(chunk -> {
-            //收集AI响应内容
-            stringBuilder.append(chunk);
-            return chunk;
-        }).doOnComplete(() -> {
-            String aiResponse = stringBuilder.toString();
-            if (StrUtil.isNotBlank(aiResponse)) {
-                chatHistoryService.addChatMessage(appId,aiResponse, MessageTypeEnum.AI.getValue(), loginUser.getId());
-            }
-        }).doOnError(error -> {
-            //如果AI回复失败，也要记录错误消息
-            String errorMessage = "AI回复失败: " + error.getMessage();
-            chatHistoryService.addChatMessage(appId,errorMessage, MessageTypeEnum.AI.getValue(), loginUser.getId());
-        });
+        return streamHandlerExecutor.doExecute(contentFlux, appId, loginUser, codeGenTypeEnum);
     }
 
 

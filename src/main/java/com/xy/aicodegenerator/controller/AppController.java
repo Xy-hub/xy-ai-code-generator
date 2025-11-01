@@ -80,8 +80,8 @@ public class AppController {
         //调用AI自动生成应用名称
         AppNameResult appName = aiCodeGeneratorService.createAppName(CommonPrompt.CREATE_APP_NAME_PROMPT + initPrompt);
         app.setAppName(appName.getAppName());
-        // 暂时设置为多文件生成
-        app.setCodeGenType(CodeGenTypeEnum.HTML.getValue());
+        // 暂时设置为VUE生成
+        app.setCodeGenType(CodeGenTypeEnum.VUE_PROJECT.getValue());
         // 插入数据库
         boolean result = appService.save(app);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
