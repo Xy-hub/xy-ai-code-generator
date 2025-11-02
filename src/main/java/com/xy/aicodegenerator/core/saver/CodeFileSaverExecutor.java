@@ -20,6 +20,8 @@ public class CodeFileSaverExecutor {
 
     private static final MultiFileCodeFileSaverTemplate multiFileCodeFileSaver = new MultiFileCodeFileSaverTemplate();
 
+    private static final VueProjectCodeFileSaverTemplate vueProjectCodeFileSaverTemplate = new VueProjectCodeFileSaverTemplate();
+
     /**
      * 执行代码保存（使用 appId）
      *
@@ -32,6 +34,7 @@ public class CodeFileSaverExecutor {
         return switch (codeGenType) {
             case HTML -> htmlCodeFileSaver.saveCode((HtmlCodeResult) codeResult, appId);
             case MULTI_FILE -> multiFileCodeFileSaver.saveCode((MultiFileCodeResult) codeResult, appId);
+            case VUE_PROJECT -> vueProjectCodeFileSaverTemplate.saveCode(codeResult, appId);
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型: " + codeGenType);
         };
     }
