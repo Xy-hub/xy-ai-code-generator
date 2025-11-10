@@ -6,6 +6,7 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.xy.aicodegenerator.exception.BusinessException;
 import com.xy.aicodegenerator.exception.ErrorCode;
+import dev.langchain4j.agent.tool.P;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -31,17 +32,32 @@ import java.util.UUID;
 @Slf4j
 public class WebScreenShotUtil {
 
-    private static final WebDriver webDriver;
+    private static final ThreadLocal<WebDriver> driverThreadLocal = new ThreadLocal<>();
+    private static final int DEFAULT_WIDTH = 1600;
+    private static final int DEFAULT_HEIGHT = 900;
 
-    static {
-        final int DEFAULT_WIDTH = 1600;
-        final int DEFAULT_HEIGHT = 900;
-        webDriver = initEdgeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
-    }
 
     @PreDestroy
     public void destroy() {
-        webDriver.quit();
+        WebDriver webDriver = driverThreadLocal.get();
+        if (webDriver != null) {
+            try {
+                webDriver.quit();
+            } catch (Exception e) {
+                log.error("关闭WebDriver时出现异常", e);
+            } finally {
+                driverThreadLocal.remove();
+            }
+        }
+    }
+
+    public static WebDriver getWebDriver() {
+        WebDriver webDriver = driverThreadLocal.get();
+        if (webDriver == null) {
+            webDriver = initEdgeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+            driverThreadLocal.set(webDriver);
+        }
+        return webDriver;
     }
 
     /**
@@ -55,6 +71,7 @@ public class WebScreenShotUtil {
             log.error("网页URL不能为空");
             return null;
         }
+        WebDriver webDriver = getWebDriver();
         try {
             // 创建临时目录
             String rootPath = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "screenshots"
@@ -84,6 +101,14 @@ public class WebScreenShotUtil {
         } catch (Exception e) {
             log.error("网页截图失败: {}", webUrl, e);
             return null;
+        } finally {
+            try {
+                webDriver.quit();
+            } catch (Exception e) {
+                log.error("关闭WebDriver时出现异常", e);
+            } finally {
+                driverThreadLocal.remove();
+            }
         }
     }
 

@@ -7,6 +7,10 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
+import com.xy.aicodegenerator.ai.AiCodeGeneratorService;
+import com.xy.aicodegenerator.ai.AiCodeGeneratorServiceFactory;
+import com.xy.aicodegenerator.ai.CommonAiService;
+import com.xy.aicodegenerator.ai.model.AppNameResult;
 import com.xy.aicodegenerator.constant.AppConstant;
 import com.xy.aicodegenerator.core.AiCodeGeneratorFacade;
 import com.xy.aicodegenerator.core.handler.StreamHandlerExecutor;
@@ -14,6 +18,7 @@ import com.xy.aicodegenerator.exception.BusinessException;
 import com.xy.aicodegenerator.exception.ErrorCode;
 import com.xy.aicodegenerator.exception.ThrowUtils;
 import com.xy.aicodegenerator.mapper.AppMapper;
+import com.xy.aicodegenerator.model.dto.app.AppAddRequest;
 import com.xy.aicodegenerator.model.dto.app.AppQueryRequest;
 import com.xy.aicodegenerator.model.entity.App;
 import com.xy.aicodegenerator.model.entity.User;
@@ -21,6 +26,7 @@ import com.xy.aicodegenerator.model.enums.CodeGenTypeEnum;
 import com.xy.aicodegenerator.model.enums.MessageTypeEnum;
 import com.xy.aicodegenerator.model.vo.AppVO;
 import com.xy.aicodegenerator.model.vo.UserVO;
+import com.xy.aicodegenerator.prompt.CommonPrompt;
 import com.xy.aicodegenerator.service.AppService;
 import com.xy.aicodegenerator.service.ChatHistoryService;
 import com.xy.aicodegenerator.service.ScreenshotService;
@@ -64,6 +70,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
 
     @Resource
     private ScreenshotService screenshotService;
+
+    @Resource
+    private AiCodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -237,6 +246,34 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
             boolean updated = this.updateById(updateApp);
             ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR, "更新应用封面字段失败");
         });
+    }
+
+    /**
+     * 创建应用
+     * @param appAddRequest
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public Long createApp(AppAddRequest appAddRequest, User loginUser) {
+        // 参数校验
+        String initPrompt = appAddRequest.getInitPrompt();
+        ThrowUtils.throwIf(StrUtil.isBlank(initPrompt), ErrorCode.PARAMS_ERROR, "初始化 prompt 不能为空");
+        // 构造入库对象
+        App app = new App();
+        BeanUtil.copyProperties(appAddRequest, app);
+        app.setUserId(loginUser.getId());
+        //调用AI自动生成应用名称
+        CommonAiService commonAiService = aiCodeGeneratorServiceFactory.getCommonAiCodeGeneratorService();
+        AppNameResult appName = commonAiService.createAppName(CommonPrompt.CREATE_APP_NAME_PROMPT + initPrompt);
+        app.setAppName(appName.getAppName());
+        // 使用AI智能选择代码生成类型
+        CodeGenTypeEnum codeGenTypeEnum = commonAiService.routeCodeGenType(initPrompt);
+        app.setCodeGenType(codeGenTypeEnum.getValue());
+        // 插入数据库
+        boolean result = this.save(app);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return app.getId();
     }
 
 

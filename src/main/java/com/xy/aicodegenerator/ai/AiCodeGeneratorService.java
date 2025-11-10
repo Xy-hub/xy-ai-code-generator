@@ -5,6 +5,7 @@ import cn.hutool.json.JSONObject;
 import com.xy.aicodegenerator.ai.model.AppNameResult;
 import com.xy.aicodegenerator.ai.model.HtmlCodeResult;
 import com.xy.aicodegenerator.ai.model.MultiFileCodeResult;
+import com.xy.aicodegenerator.model.enums.CodeGenTypeEnum;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.service.*;
 import reactor.core.publisher.Flux;
@@ -65,5 +66,13 @@ public interface AiCodeGeneratorService {
      */
     @UserMessage(value = "{{message}}")
     AppNameResult createAppName(@V("message") String userMessage);
+
+    /**
+     * 根据用户需求智能选择代码生成类型
+     * @param userPrompt
+     * @return
+     */
+    @SystemMessage(fromResource = "prompt/codegen-routing-system-prompt.txt")
+    CodeGenTypeEnum routeCodeGenType(@UserMessage String userPrompt);
 
 }

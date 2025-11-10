@@ -36,7 +36,6 @@ public class OssManager {
         PutObjectResult result = putObject(key, file);
         if (result != null) {
             String url = String.format("%s/%s",ossConfig.getHost(), key);
-
             log.info("文件上传成功: {} -> {}",file.getName(), url);
             return url;
         } else {

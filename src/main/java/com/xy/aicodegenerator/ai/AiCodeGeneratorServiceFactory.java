@@ -67,6 +67,17 @@ public class AiCodeGeneratorServiceFactory {
             .build();
 
     /**
+     * 获取通用AI Service
+     * 适用于简单的，一问一答形式的AI服务调用
+     */
+    public CommonAiService getCommonAiCodeGeneratorService() {
+        return AiServices
+                .builder(CommonAiService.class)
+                .chatModel(chatModel)
+                .build();
+    }
+
+    /**
      * 根据 appId 获取服务（带缓存） 兼容旧业务逻辑
      */
     public AiCodeGeneratorService getAiCodeGeneratorService(long appId) {

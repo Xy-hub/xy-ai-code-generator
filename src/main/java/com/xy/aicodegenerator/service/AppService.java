@@ -2,6 +2,7 @@ package com.xy.aicodegenerator.service;
 
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
+import com.xy.aicodegenerator.model.dto.app.AppAddRequest;
 import com.xy.aicodegenerator.model.dto.app.AppQueryRequest;
 import com.xy.aicodegenerator.model.entity.App;
 import com.xy.aicodegenerator.model.entity.User;
@@ -29,4 +30,6 @@ public interface AppService extends IService<App> {
     String deployApp(Long appId, User loginUser);
 
     void generateAppScreenshotAsync(Long appId, String appUrl);
+
+    Long createApp(AppAddRequest appAddRequest, User loginUser);
 }
