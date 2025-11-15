@@ -2,7 +2,7 @@ package com.xy.aicodegenerator.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.xy.aicodegenerator.ai.tools.FileWriteTool;
+import com.xy.aicodegenerator.ai.tools.*;
 import com.xy.aicodegenerator.exception.BusinessException;
 import com.xy.aicodegenerator.exception.ErrorCode;
 import com.xy.aicodegenerator.model.enums.CodeGenTypeEnum;
@@ -41,6 +41,9 @@ public class AiCodeGeneratorServiceFactory {
 
     @Resource
     private ChatHistoryService chatHistoryService;
+
+    @Resource
+    private ToolManager toolManager;
 
     /**
      * 默认提供一个 Bean
@@ -115,7 +118,7 @@ public class AiCodeGeneratorServiceFactory {
             case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(o -> chatMemory)
-                    .tools(new FileWriteTool())
+                    .tools(toolManager.getAllTools())
                     .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage
                             .from(toolExecutionRequest,"Error, there is no tool called " + toolExecutionRequest.name()))
                     .build();
