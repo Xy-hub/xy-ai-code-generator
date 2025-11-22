@@ -1,47 +1,95 @@
 package com.xy.aicodegenerator.langgraph.node;
 
-import com.xy.aicodegenerator.langgraph.ai.ImageCollectionService;
+import com.xy.aicodegenerator.langgraph.ai.ImageCollectionPlanService;
+import com.xy.aicodegenerator.langgraph.model.ImageCollectionPlan;
 import com.xy.aicodegenerator.langgraph.model.ImageResource;
-import com.xy.aicodegenerator.langgraph.model.enums.ImageCategoryEnum;
 import com.xy.aicodegenerator.langgraph.state.WorkflowContext;
+import com.xy.aicodegenerator.langgraph.tools.ImageSearchTool;
+import com.xy.aicodegenerator.langgraph.tools.LogoGeneratorTool;
+import com.xy.aicodegenerator.langgraph.tools.MermaidDiagramTool;
+import com.xy.aicodegenerator.langgraph.tools.UndrawIllustrationTool;
 import com.xy.aicodegenerator.utils.SpringContextUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.action.AsyncNodeAction;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
-/**
- * 图片收集节点
- * 使用AI进行工具调用，收集不同类型的图片
- */
 @Slf4j
 public class ImageCollectorNode {
 
+    /**
+     * 使用CompletableFuture并发
+     * @return
+     */
     public static AsyncNodeAction<MessagesState<String>> create() {
         return AsyncNodeAction.node_async(state -> {
             WorkflowContext context = WorkflowContext.getContext(state);
-            /*
-              TODO
-              修改originalPrompt， 原提示词是创建一个XXX网站，图片收集节点可能不会根据这个提示词进行搜集图片，应该先调用AI得知你想创建什么类型的网站，然后返回应该搜索什么类型的图片，然后
-              再使用图片搜集工具再根据AI返回的提示词去搜索相关图片
-             */
             String originalPrompt = context.getOriginalPrompt();
-            String imageListStr = "";
+            List<ImageResource> collectedImages = new ArrayList<>();
+
             try {
-                // 获取AI图片收集服务
-                ImageCollectionService imageCollectionService = SpringContextUtil.getBean(ImageCollectionService.class);
-                // 使用 AI 服务进行智能图片收集
-                imageListStr = imageCollectionService.collectImages(originalPrompt);
+                // 第一步：获取图片收集计划
+                ImageCollectionPlanService planService = SpringContextUtil.getBean(ImageCollectionPlanService.class);
+                ImageCollectionPlan plan = planService.planImageCollection(originalPrompt);
+                log.info("获取到图片收集计划，开始并发执行");
+
+                // 第二步：并发执行各种图片收集任务
+                List<CompletableFuture<List<ImageResource>>> futures = new ArrayList<>();
+                // 并发执行内容图片搜索
+                if (plan.getContentImageTasks() != null) {
+                    ImageSearchTool imageSearchTool = SpringContextUtil.getBean(ImageSearchTool.class);
+                    for (ImageCollectionPlan.ImageSearchTask task : plan.getContentImageTasks()) {
+                        futures.add(CompletableFuture.supplyAsync(() ->
+                                imageSearchTool.searchContentImages(task.query())));
+                    }
+                }
+                // 并发执行插画图片搜索
+                if (plan.getIllustrationTasks() != null) {
+                    UndrawIllustrationTool illustrationTool = SpringContextUtil.getBean(UndrawIllustrationTool.class);
+                    for (ImageCollectionPlan.IllustrationTask task : plan.getIllustrationTasks()) {
+                        futures.add(CompletableFuture.supplyAsync(() ->
+                                illustrationTool.searchIllustrations(task.query())));
+                    }
+                }
+                // 并发执行架构图生成
+                if (plan.getDiagramTasks() != null) {
+                    MermaidDiagramTool diagramTool = SpringContextUtil.getBean(MermaidDiagramTool.class);
+                    for (ImageCollectionPlan.DiagramTask task : plan.getDiagramTasks()) {
+                        futures.add(CompletableFuture.supplyAsync(() ->
+                                diagramTool.generateMermaidDiagram(task.mermaidCode(), task.description())));
+                    }
+                }
+                // 并发执行Logo生成
+                if (plan.getLogoTasks() != null) {
+                    LogoGeneratorTool logoTool = SpringContextUtil.getBean(LogoGeneratorTool.class);
+                    for (ImageCollectionPlan.LogoTask task : plan.getLogoTasks()) {
+                        futures.add(CompletableFuture.supplyAsync(() ->
+                                logoTool.generateLogos(task.description())));
+                    }
+                }
+
+                // 等待所有任务完成并收集结果
+                CompletableFuture<Void> allTasks = CompletableFuture.allOf(
+                        futures.toArray(new CompletableFuture[0]));
+                allTasks.join();
+                // 收集所有结果
+                for (CompletableFuture<List<ImageResource>> future : futures) {
+                    List<ImageResource> images = future.get();
+                    if (images != null) {
+                        collectedImages.addAll(images);
+                    }
+                }
+                log.info("并发图片收集完成，共收集到 {} 张图片", collectedImages.size());
             } catch (Exception e) {
                 log.error("图片收集失败: {}", e.getMessage(), e);
             }
             // 更新状态
             context.setCurrentStep("图片收集");
-            context.setImageListStr(imageListStr);
+            context.setImageList(collectedImages);
             return WorkflowContext.saveContext(context);
         });
     }
 }
-
