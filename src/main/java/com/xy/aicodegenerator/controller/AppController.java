@@ -25,6 +25,8 @@ import com.xy.aicodegenerator.service.UserService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +34,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.io.File;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -54,6 +59,9 @@ public class AppController {
 
     @Resource
     private ProjectDownloadService projectDownloadService;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 创建应用
@@ -133,7 +141,7 @@ public class AppController {
     /**
      * 根据 id 获取应用详情
      *
-     * @param id      应用 id
+     * @param id 应用 id
      * @return 应用详情
      */
     @GetMapping("/get/vo")
@@ -173,6 +181,7 @@ public class AppController {
      *
      * @param appQueryRequest 查询请求
      * @return 精选应用列表
+     * TODO 可能需要单独的精选接口，用于更新redis数据
      */
     @PostMapping("/good/list/page/vo")
     public BaseResponse<Page<AppVO>> listGoodAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
@@ -181,11 +190,40 @@ public class AppController {
         long pageSize = appQueryRequest.getPageSize();
         ThrowUtils.throwIf(pageSize > 20, ErrorCode.PARAMS_ERROR, "每页最多查询 20 个应用");
         long pageNum = appQueryRequest.getPageNum();
-        // 只查询精选的应用
-        appQueryRequest.setPriority(AppConstant.GOOD_APP_PRIORITY);
-        // 只查询公开的应用
-        appQueryRequest.setIsPublic(BooleanUtil.toInt(true));
-        return getAppVOPage(pageNum, pageSize, appQueryRequest);
+
+        List<AppVO> allGoodApps = getAllGoodAppsFromCache();
+
+        // 手动分页
+        int total = allGoodApps.size();
+        int fromIndex = (int) ((pageNum - 1) * pageSize);
+        int toIndex = Math.min(fromIndex + (int) pageSize, total);
+
+        List<AppVO> pageItems = new ArrayList<>();
+        if (fromIndex < total) {
+            pageItems = allGoodApps.subList(fromIndex, toIndex);
+        }
+
+        Page<AppVO> appVOPage = new Page<>(pageNum, pageSize, total);
+        appVOPage.setRecords(pageItems);
+
+        return ResultUtils.success(appVOPage);
+    }
+
+    private List<AppVO> getAllGoodAppsFromCache() {
+        String cacheKey = "app:good:list:all";
+        String cached = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            return JSONUtil.toList(cached, AppVO.class);
+        }
+        // 缓存未命中：查数据库（无分页，查全部）
+        AppQueryRequest query = new AppQueryRequest();
+        query.setPriority(AppConstant.GOOD_APP_PRIORITY);
+        query.setIsPublic(BooleanUtil.toInt(true));
+        // 注意：这里不设分页，查询全部
+        List<AppVO> all = appService.getAppVOList(appService.list(appService.getQueryWrapper(query)));
+        // 写入缓存（例如 10 分钟）
+        stringRedisTemplate.opsForValue().set(cacheKey, JSONUtil.toJsonStr(all), Duration.ofDays(1));
+        return all;
     }
 
     /**
@@ -209,18 +247,15 @@ public class AppController {
         Flux<String> contentFlux = appService.chatToGenCode(appId, message, loginUser);
         // 转换为 ServerSentEvent 格式
         return contentFlux.map(chunk -> {
-                    // 将内容包装成JSON对象
-                    Map<String, String> wrapper = Map.of("d", chunk);
-                    String jsonData = JSONUtil.toJsonStr(wrapper);
-                    return ServerSentEvent.<String>builder().data(jsonData).build();
-                }).concatWith(Mono.just(
-                        // 发送结束事件
-                        ServerSentEvent.<String>builder().event("done").data("").build()
-                ));
+            // 将内容包装成JSON对象
+            Map<String, String> wrapper = Map.of("d", chunk);
+            String jsonData = JSONUtil.toJsonStr(wrapper);
+            return ServerSentEvent.<String>builder().data(jsonData).build();
+        }).concatWith(Mono.just(
+                // 发送结束事件
+                ServerSentEvent.<String>builder().event("done").data("").build()
+        ));
     }
-
-
-
 
 
     // 管理员接口
@@ -304,12 +339,12 @@ public class AppController {
         // 获取封装类
         return ResultUtils.success(appService.getAppVOWithUserVO(app));
     }
-    
+
     /**
      * 通用分页查询应用VO列表方法
      *
-     * @param pageNum 页码
-     * @param pageSize 页面大小
+     * @param pageNum         页码
+     * @param pageSize        页面大小
      * @param appQueryRequest 查询条件
      * @return 应用VO分页列表
      */
