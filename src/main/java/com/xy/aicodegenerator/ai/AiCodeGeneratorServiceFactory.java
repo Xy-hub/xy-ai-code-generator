@@ -2,6 +2,8 @@ package com.xy.aicodegenerator.ai;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.xy.aicodegenerator.ai.guardreail.PromptSafetyInputGuardrail;
+import com.xy.aicodegenerator.ai.guardreail.RetryOutputGuardrail;
 import com.xy.aicodegenerator.ai.tools.*;
 import com.xy.aicodegenerator.exception.BusinessException;
 import com.xy.aicodegenerator.exception.ErrorCode;
@@ -119,13 +121,20 @@ public class AiCodeGeneratorServiceFactory {
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(o -> chatMemory)
                     .tools(toolManager.getAllTools())
+                    //最大工具调用次数
+//                    .maxSequentialToolsInvocations(20)
+                    .inputGuardrails(new PromptSafetyInputGuardrail())
                     .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage
                             .from(toolExecutionRequest,"Error, there is no tool called " + toolExecutionRequest.name()))
                     .build();
             case HTML,MULTI_FILE -> AiServices.builder(AiCodeGeneratorService.class)
                     .chatModel(chatModel)
                     .streamingChatModel(openAiStreamingChatModel)
+                    .inputGuardrails(new PromptSafetyInputGuardrail())
+                    //使用输出护轨会导致流式输出的响应不及时，所以这里暂时不使用
+//                    .outputGuardrails(new RetryOutputGuardrail())
                     .chatMemory(chatMemory)
+//                    .maxSequentialToolsInvocations(20)
                     .build();
             default -> throw new BusinessException(ErrorCode.SYSTEM_ERROR, "不支持的代码生成类型" + codeGenType.getValue());
         };
