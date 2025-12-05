@@ -158,7 +158,7 @@ public class WebScreenShotUtil {
     private static WebDriver initChromeDriver(int width, int height) {
         try {
             // 自动管理 ChromeDriver
-            WebDriverManager.chromedriver().setup();
+            System.setProperty("webdriver.chrome.driver", "/usr/local/bin/chromedriver");
 
             // 配置 Chrome 选项
             ChromeOptions options = new ChromeOptions();
