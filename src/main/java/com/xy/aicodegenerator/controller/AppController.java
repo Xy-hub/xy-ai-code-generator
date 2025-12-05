@@ -1,6 +1,7 @@
 package com.xy.aicodegenerator.controller;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -224,7 +225,9 @@ public class AppController {
         // 注意：这里不设分页，查询全部
         List<AppVO> all = appService.getAppVOList(appService.list(appService.getQueryWrapper(query)));
         // 写入缓存（例如 10 分钟）
-        stringRedisTemplate.opsForValue().set(cacheKey, JSONUtil.toJsonStr(all), Duration.ofDays(1));
+        if (CollUtil.isNotEmpty(all)) {
+            stringRedisTemplate.opsForValue().set(cacheKey, JSONUtil.toJsonStr(all), Duration.ofDays(1));
+        }
         return all;
     }
 
