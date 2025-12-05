@@ -6,7 +6,6 @@ import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.xy.aicodegenerator.exception.BusinessException;
 import com.xy.aicodegenerator.exception.ErrorCode;
-import dev.langchain4j.agent.tool.P;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
@@ -16,8 +15,6 @@ import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.edge.EdgeDriver;
-import org.openqa.selenium.edge.EdgeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.firefox.FirefoxOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -51,10 +48,14 @@ public class WebScreenShotUtil {
         }
     }
 
-    public static WebDriver getWebDriver() {
+    public static WebDriver getWebDriver(String browser) {
         WebDriver webDriver = driverThreadLocal.get();
         if (webDriver == null) {
-            webDriver = initEdgeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+            if (browser.equals("Chrome")) {
+                webDriver = initChromeDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+            } else {
+                webDriver = initFireFoxDriver(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+            }
             driverThreadLocal.set(webDriver);
         }
         return webDriver;
@@ -66,12 +67,12 @@ public class WebScreenShotUtil {
      * @param webUrl 网页URL
      * @return 压缩后的截图文件路径，失败返回null
      */
-    public static String saveWebPageScreenshot(String webUrl) {
+    public static String saveWebPageScreenshot(String webUrl, String browser) {
         if (StrUtil.isBlank(webUrl)) {
             log.error("网页URL不能为空");
             return null;
         }
-        WebDriver webDriver = getWebDriver();
+        WebDriver webDriver = getWebDriver(browser);
         try {
             // 创建临时目录
             String rootPath = System.getProperty("user.dir") + File.separator + "tmp" + File.separator + "screenshots"
@@ -114,14 +115,14 @@ public class WebScreenShotUtil {
 
 
     /**
-     * 初始化 Chrome 浏览器驱动
+     * 初始化 FireFox 浏览器驱动
      */
-    private static WebDriver initEdgeDriver(int width, int height) {
+    private static WebDriver initFireFoxDriver(int width, int height) {
         try {
-            // 自动管理 EdgeDriver
+            // 自动管理 FireFoxDriver
             WebDriverManager.firefoxdriver().setup();
 
-            // 配置 Edge 选项
+            // 配置 FireFox 选项
             FirefoxOptions options = new FirefoxOptions();
 
             // 无头模式
@@ -136,9 +137,9 @@ public class WebScreenShotUtil {
             options.addArguments(String.format("--window-size=%d,%d", width, height));
             // 禁用扩展
             options.addArguments("--disable-extensions");
-            // 设置正确的 Edge 用户代理
+            // 设置正确的 FireFox 用户代理
             options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36");
-            // 创建 Edge 驱动
+            // 创建 FireFox 驱动
             WebDriver driver = new FirefoxDriver(options);
             // 设置页面加载超时
             driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
@@ -146,8 +147,46 @@ public class WebScreenShotUtil {
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
             return driver;
         } catch (Exception e) {
-            log.error("初始化 Edge 浏览器失败", e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "初始化 Edge 浏览器失败");
+            log.error("初始化 FireFox 浏览器失败", e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "初始化 FireFox 浏览器失败");
+        }
+    }
+
+    /**
+     * 初始化 Chrome 浏览器驱动
+     */
+    private static WebDriver initChromeDriver(int width, int height) {
+        try {
+            // 自动管理 ChromeDriver
+            WebDriverManager.chromedriver().setup();
+
+            // 配置 Chrome 选项
+            ChromeOptions options = new ChromeOptions();
+
+            // 无头模式
+            options.addArguments("--headless");
+            // 禁用GPU
+            options.addArguments("--disable-gpu");
+            // 禁用沙盒模式
+            options.addArguments("--no-sandbox");
+            // 禁用开发者shm使用
+            options.addArguments("--disable-dev-shm-usage");
+            // 设置窗口大小
+            options.addArguments(String.format("--window-size=%d,%d", width, height));
+            // 禁用扩展
+            options.addArguments("--disable-extensions");
+            // 设置正确的 Chrome 用户代理
+            options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36");
+            // 创建 Chrome 驱动
+            WebDriver driver = new ChromeDriver(options);
+            // 设置页面加载超时
+            driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+            // 设置隐式等待
+            driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+            return driver;
+        } catch (Exception e) {
+            log.error("初始化 Chrome 浏览器失败", e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "初始化 Chrome 浏览器失败");
         }
     }
 
