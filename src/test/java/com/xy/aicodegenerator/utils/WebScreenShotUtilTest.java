@@ -11,7 +11,7 @@ class WebScreenShotUtilTest {
     @Test
     void saveWebPageScreenshot() {
         String testUrl = "https://www.baidu.com";
-        String str = WebScreenShotUtil.saveWebPageScreenshot(testUrl);
+        String str = WebScreenShotUtil.saveWebPageScreenshot(testUrl,"FireFox");
         System.out.println(str);
     }
 
