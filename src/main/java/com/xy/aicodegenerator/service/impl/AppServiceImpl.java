@@ -225,7 +225,12 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         boolean updateResult = this.updateById(updateApp);
         ThrowUtils.throwIf(!updateResult, ErrorCode.OPERATION_ERROR, "更新应用部署信息失败");
         // 9. 返回可访问的 URL
-        String appUrl = String.format("%s/%s/", deployHost, deployKey);
+        String appUrl = "";
+        if (CodeGenTypeEnum.VUE_PROJECT.getValue().equals(codeGenType)) {
+            appUrl = String.format("%s/%s/dist/", deployHost, deployKey);
+        } else {
+            appUrl = String.format("%s/%s/", deployHost, deployKey);
+        }
         // 10. 异步生成截图并更新应用封面
         this.generateAppScreenshotAsync(appId, appUrl);
         return appUrl;
