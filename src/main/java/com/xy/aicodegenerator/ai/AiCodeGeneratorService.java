@@ -39,6 +39,9 @@ public interface AiCodeGeneratorService {
     @SystemMessage(fromResource = "prompt/codegen-html-system-prompt.txt")
     Flux<String> generateHtmlCodeStream(String userMessage);
 
+    @SystemMessage(fromResource = "prompt/codegen-html-system-prompt.txt")
+    TokenStream generateHtmlCodeTokenStream(String userMessage);
+
     /**
      * 生成多文件代码（流式）
      *

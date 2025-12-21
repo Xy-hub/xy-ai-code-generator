@@ -10,6 +10,7 @@ import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.util.List;
+import java.util.Random;
 
 @SpringBootTest
 class AiCodeGeneratorFacadeTest {
@@ -25,7 +26,9 @@ class AiCodeGeneratorFacadeTest {
 
     @Test
     void generateAndSaveCodeStream() {
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream("生成一个个人博客网站，代码不超过50行", CodeGenTypeEnum.MULTI_FILE, 1L);
+        Random random = new Random(10000);
+        int appId = random.nextInt();
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream("生成一个个人博客网站，代码不超过50行", CodeGenTypeEnum.HTML, (long)appId);
         // 阻塞等待所有数据收集完成
         List<String> result = codeStream.collectList().block();
         // 验证结果

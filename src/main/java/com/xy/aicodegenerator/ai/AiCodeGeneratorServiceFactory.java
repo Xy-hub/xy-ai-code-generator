@@ -30,10 +30,10 @@ import java.time.Duration;
 public class AiCodeGeneratorServiceFactory {
 
     @Resource
-    private ChatModel chatModel;
+    private ChatModel zhiPuChatModel;
 
     @Resource
-    private StreamingChatModel openAiStreamingChatModel;
+    private StreamingChatModel zhiPuStreamingChatModel;
 
     @Resource
     private StreamingChatModel reasoningStreamingChatModel;
@@ -78,7 +78,7 @@ public class AiCodeGeneratorServiceFactory {
     public CommonAiService getCommonAiCodeGeneratorService() {
         return AiServices
                 .builder(CommonAiService.class)
-                .chatModel(chatModel)
+                .chatModel(zhiPuChatModel)
                 .build();
     }
 
@@ -118,7 +118,7 @@ public class AiCodeGeneratorServiceFactory {
         }
         return switch (codeGenType) {
             case VUE_PROJECT -> AiServices.builder(AiCodeGeneratorService.class)
-                    .streamingChatModel(reasoningStreamingChatModel)
+                    .streamingChatModel(zhiPuStreamingChatModel)
                     .chatMemoryProvider(o -> chatMemory)
                     .tools(toolManager.getAllTools())
                     //最大工具调用次数
@@ -128,8 +128,8 @@ public class AiCodeGeneratorServiceFactory {
                             .from(toolExecutionRequest,"Error, there is no tool called " + toolExecutionRequest.name()))
                     .build();
             case HTML,MULTI_FILE -> AiServices.builder(AiCodeGeneratorService.class)
-                    .chatModel(chatModel)
-                    .streamingChatModel(openAiStreamingChatModel)
+                    .chatModel(zhiPuChatModel)
+                    .streamingChatModel(zhiPuStreamingChatModel)
                     .inputGuardrails(new PromptSafetyInputGuardrail())
                     //使用输出护轨会导致流式输出的响应不及时，所以这里暂时不使用
 //                    .outputGuardrails(new RetryOutputGuardrail())
