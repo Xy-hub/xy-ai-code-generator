@@ -135,7 +135,10 @@ public class AiCodeGeneratorFacade {
         StringBuilder codeBuilder = new StringBuilder();
         // 实时收集代码片段
         return codeStream
-                .doOnNext(codeBuilder::append)
+                .doOnNext(chunk -> {
+                    // 实时收集代码片段
+                    codeBuilder.append(chunk);
+                })
                 .doOnComplete(() -> {
                     // 流式返回完成后保存代码
                     try {

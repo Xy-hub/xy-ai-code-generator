@@ -26,9 +26,9 @@ class AiCodeGeneratorFacadeTest {
 
     @Test
     void generateAndSaveCodeStream() {
-        Random random = new Random(10000);
-        int appId = random.nextInt();
-        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream("生成一个个人博客网站，代码不超过50行", CodeGenTypeEnum.HTML, (long)appId);
+        Random random = new Random();
+        int appId = random.nextInt(10000)+1;
+        Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream("生成一个个人博客网站，代码不超过50行", CodeGenTypeEnum.MULTI_FILE, (long)appId);
         // 阻塞等待所有数据收集完成
         List<String> result = codeStream.collectList().block();
         // 验证结果
