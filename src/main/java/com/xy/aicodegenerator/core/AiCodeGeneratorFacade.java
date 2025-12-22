@@ -79,34 +79,8 @@ public class AiCodeGeneratorFacade {
         AiCodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId, codeGenTypeEnum);
         return switch (codeGenTypeEnum) {
             case HTML -> {
-//                Flux<String> codeStream = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
-//                yield processCodeStream(codeStream, CodeGenTypeEnum.HTML, appId);
-
-                TokenStream tokenStream = aiCodeGeneratorService.generateHtmlCodeTokenStream(userMessage);
-                yield  Flux.create(sink -> {
-                    StringBuilder codeBuilder = new StringBuilder();
-                    tokenStream
-                            .onPartialResponse(partialResponse -> {
-                                if (partialResponse != null) {
-                                    codeBuilder.append(partialResponse);
-                                    sink.next(partialResponse);
-                                }
-                            })
-                            .onCompleteResponse(completeResponse -> {
-                                String completeCode = codeBuilder.toString();
-                                // 使用执行器解析代码
-                                Object parsedResult = CodeParserExecutor.executeParser(completeCode, CodeGenTypeEnum.HTML);
-                                // 使用执行器保存代码
-                                File savedDir = CodeFileSaverExecutor.executeSaver(parsedResult, CodeGenTypeEnum.HTML, appId);
-                                log.info("保存成功，路径为：" + savedDir.getAbsolutePath());
-                                sink.complete();
-                            })
-                            .onToolExecuted(toolExecution -> {
-                                log.info("tool executed successfully: {}", toolExecution);
-                            })
-                            .onError(sink::error)
-                            .start();
-                });
+                Flux<String> codeStream = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
+                yield processCodeStream(codeStream, CodeGenTypeEnum.HTML, appId);
             }
             case MULTI_FILE -> {
                 Flux<String> codeStream = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
