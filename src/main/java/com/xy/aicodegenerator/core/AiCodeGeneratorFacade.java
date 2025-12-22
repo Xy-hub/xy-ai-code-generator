@@ -23,6 +23,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SignalType;
 
 import java.io.File;
 
@@ -110,6 +111,9 @@ public class AiCodeGeneratorFacade {
         // 实时收集代码片段
         return codeStream
                 .doOnNext(codeBuilder::append)
+                .doOnCancel(() -> {
+                    log.info("生成失败，进程被cancel了. appId = {}",appId);
+                })
                 .doOnComplete(() -> {
                     // 流式返回完成后保存代码
                     try {

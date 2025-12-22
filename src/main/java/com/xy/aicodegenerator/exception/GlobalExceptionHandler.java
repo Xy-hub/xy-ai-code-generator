@@ -42,6 +42,16 @@ public class GlobalExceptionHandler {
         return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统错误");
     }
 
+    @ExceptionHandler(Exception.class)
+    public BaseResponse<?> ExceptionHandler(Exception e) {
+        log.error("Exception", e);
+        // 尝试处理 SSE 请求
+        if (handleSseError(ErrorCode.SYSTEM_ERROR.getCode(), "系统错误")) {
+            return null;
+        }
+        return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统错误");
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public BaseResponse<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
         StringBuilder errorMessage = new StringBuilder();
