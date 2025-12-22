@@ -65,7 +65,7 @@
 //
 //    public static void main(String[] args) {
 //        ZhipuAiClient client = ZhipuAiClient.builder()
-//                .apiKey("xxxx")
+//                .apiKey("19df66e8481547059d7a99283c48025a.dCWc2EQESts47OvS")
 //                .build();
 ////        ChatMessage build = ChatMessage.builder()
 ////                .role(ChatMessageRole.SYSTEM.value())

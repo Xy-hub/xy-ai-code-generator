@@ -7,9 +7,9 @@ spring:
   # mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: xxxxxx
-    username: xxxxxx
-    password: xxxxxxx
+    url: jdbc:mysql://mysql5.sqlpub.com:3310/xytrest
+    username: xtroot
+    password: d6eQqUccZt1DGYvL
   application:
     name: xy-ai-code-generator-backend
 server:
